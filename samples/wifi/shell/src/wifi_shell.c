@@ -237,6 +237,38 @@ static int cmd_supplicant(const struct shell *shell,
 	return cli_main(argc,
 			argv);
 }
+
+static int wfa_dut_test(const struct shell *shell,
+			  size_t argc,
+			  const char *argv[])
+{
+	printf("arg0: %s\n", argv[0]);
+	return dut_main(argc,
+			argv);
+}
+
+static int wfa_dut_send_start(const struct shell *shell,
+			  size_t argc,
+			  const char *argv[])
+{
+	printf("arg0: %s\n", argv[0]);
+	unsigned char *respBuf = os_zalloc(64 * sizeof(unsigned char));
+	int bufLen = 0;
+	int status = wfaTGSendStart (8, "15", &bufLen, respBuf);
+	return status;
+}
+
+static int wfa_dut_traffic_config(const struct shell *shell,
+			  size_t argc,
+			  const char *argv[])
+{
+	printf("arg0: %s\n", argv[0]);
+	unsigned char *respBuf = os_zalloc(64 * sizeof(unsigned char));
+	int bufLen = 0;
+	const char *cmdBuf = "profile,IPTV,direction,send,destination,192.165.100.8,destinationPort,5602,sourcePort,5602,duration,10,payloadSize,1000,trafficClass,BestEffort,frameRate,1856";
+	int status = wfaTGConfig (strlen(cmdBuf), cmdBuf, &bufLen, respBuf);
+	return status;
+}
 #endif /* CONFIG_WPA_SUPP */
 
 
@@ -312,6 +344,18 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		  NULL,
 		  "\"\"",
 		  cmd_supplicant),
+	SHELL_CMD(dut_test,
+		  NULL,
+		  "\"\"",
+		  wfa_dut_test),
+	SHELL_CMD(dut_send_start,
+		  NULL,
+		  "\"\"",
+		  wfa_dut_send_start),
+	SHELL_CMD(dut_traffic_config,
+		  NULL,
+		  "\"\"",
+		  wfa_dut_traffic_config),
 #endif /* CONFIG_WPA_SUPP */
 	SHELL_SUBCMD_SET_END);
 
