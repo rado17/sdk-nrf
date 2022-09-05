@@ -433,6 +433,7 @@ static const struct net_wifi_mgmt_offload wifi_offload_ops = {
 	.wifi_iface.get_capabilities = wifi_nrf_if_caps_get,
 	.wifi_iface.send = wifi_nrf_if_send,
 	.scan = wifi_nrf_disp_scan_zep,
+	.get_stats = wifi_nrf_stats_get,
 };
 
 
