@@ -1,0 +1,21 @@
+# Nordic WiFi driver for nRF52840 and nRF5340
+#
+# Copyright (c) 2022 Nordic Semiconductor
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+menu "WFA DUT"
+
+config WFA_DUT
+    bool "WFA_DUT"
+    depends on  NET_SOCKETS
+    depends on  NET_SOCKETS_POSIX_NAMES || POSIX_API
+    depends on  NET_L2_NRF_WIFI_MGMT
+    depends on  WPA_SUPP
+    help
+      WFA_DUT
+
+module = WFA_DUT
+module-str = WFA DUT Certification test module
+
+endmenu
