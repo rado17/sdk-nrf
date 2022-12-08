@@ -25,18 +25,26 @@
 #include "osal_ops.h"
 #include "qspi_if.h"
 
+K_HEAP_DEFINE(nrf_wifi_drv_heap, 100000);
+//extern struct k_heap nrf_wifi_drv_heap;
 LOG_MODULE_REGISTER(wifi_nrf, CONFIG_WIFI_LOG_LEVEL);
 
 static void *zep_shim_mem_alloc(size_t size)
 {
 	size = (size + 4) & 0xfffffffc;
-	return k_malloc(size);
+	return k_heap_alloc(&nrf_wifi_drv_heap, size, K_FOREVER);
 }
 
 static void *zep_shim_mem_zalloc(size_t size)
 {
 	size = (size + 4) & 0xfffffffc;
-	return k_calloc(size, sizeof(char));
+	return k_heap_alloc(&nrf_wifi_drv_heap, size, K_FOREVER);
+//	return k_calloc(size, sizeof(char));
+}
+
+static void zep_shim_mem_free(void *ptr)
+{
+	k_heap_free(&nrf_wifi_drv_heap, ptr);
 }
 
 static void *zep_shim_mem_cpy(void *dest, const void *src, size_t count)
@@ -112,7 +120,7 @@ static void *zep_shim_spinlock_alloc(void)
 {
 	struct k_sem *lock = NULL;
 
-	lock = k_malloc(sizeof(*lock));
+	lock = k_heap_alloc(&nrf_wifi_drv_heap,sizeof(*lock), K_FOREVER);
 
 	if (!lock) {
 		LOG_ERR("%s: Unable to allocate memory for spinlock\n", __func__);
@@ -123,7 +131,7 @@ static void *zep_shim_spinlock_alloc(void)
 
 static void zep_shim_spinlock_free(void *lock)
 {
-	k_free(lock);
+	k_heap_free(&nrf_wifi_drv_heap, lock);
 }
 
 static void zep_shim_spinlock_init(void *lock)
@@ -203,15 +211,15 @@ static void *zep_shim_nbuf_alloc(unsigned int size)
 {
 	struct nwb *nwb;
 
-	nwb = (struct nwb *)k_calloc(sizeof(struct nwb), sizeof(char));
+	nwb = (struct nwb *)k_heap_alloc(&nrf_wifi_drv_heap,sizeof(struct nwb), K_FOREVER);
 
 	if (!nwb)
 		return NULL;
 
-	nwb->priv = k_calloc(size, sizeof(char));
+	nwb->priv = k_heap_alloc(&nrf_wifi_drv_heap, size, K_FOREVER);
 
 	if (!nwb->priv) {
-		k_free(nwb);
+		k_heap_free(&nrf_wifi_drv_heap, nwb);
 		return NULL;
 	}
 
@@ -230,9 +238,9 @@ static void zep_shim_nbuf_free(void *nbuf)
 
 	nwb = nbuf;
 
-	k_free(((struct nwb *)nbuf)->priv);
+	k_heap_free(&nrf_wifi_drv_heap, ((struct nwb *)nbuf)->priv);
 
-	k_free(nbuf);
+	k_heap_free(&nrf_wifi_drv_heap, nbuf);
 }
 
 static void zep_shim_nbuf_headroom_res(void *nbuf, unsigned int size)
@@ -349,7 +357,7 @@ static void *zep_shim_llist_node_alloc(void)
 {
 	struct zep_shim_llist_node *llist_node = NULL;
 
-	llist_node = k_calloc(sizeof(*llist_node), sizeof(char));
+	llist_node = k_heap_alloc(&nrf_wifi_drv_heap, sizeof(*llist_node), K_FOREVER);
 
 	if (!llist_node) {
 		LOG_ERR("%s: Unable to allocate memory for linked list node\n", __func__);
@@ -363,7 +371,7 @@ static void *zep_shim_llist_node_alloc(void)
 
 static void zep_shim_llist_node_free(void *llist_node)
 {
-	k_free(llist_node);
+	k_heap_free(&nrf_wifi_drv_heap, llist_node);
 }
 
 static void *zep_shim_llist_node_data_get(void *llist_node)
@@ -388,7 +396,7 @@ static void *zep_shim_llist_alloc(void)
 {
 	struct zep_shim_llist *llist = NULL;
 
-	llist = k_calloc(sizeof(*llist), sizeof(char));
+	llist = k_heap_alloc(&nrf_wifi_drv_heap, sizeof(*llist), K_FOREVER);
 
 	if (!llist) {
 		LOG_ERR("%s: Unable to allocate memory for linked list\n", __func__);
@@ -399,7 +407,7 @@ static void *zep_shim_llist_alloc(void)
 
 static void zep_shim_llist_free(void *llist)
 {
-	k_free(llist);
+	k_heap_free(&nrf_wifi_drv_heap,llist);
 }
 
 static void zep_shim_llist_init(void *llist)
@@ -578,7 +586,7 @@ static void *zep_shim_bus_qspi_init(void)
 {
 	struct zep_shim_bus_qspi_priv *qspi_priv = NULL;
 
-	qspi_priv = k_calloc(sizeof(*qspi_priv), sizeof(char));
+	qspi_priv = k_heap_alloc(&nrf_wifi_drv_heap, sizeof(*qspi_priv), K_FOREVER);
 
 	if (!qspi_priv) {
 		LOG_ERR("%s: Unable to allocate memory for qspi_priv\n", __func__);
@@ -594,7 +602,7 @@ static void zep_shim_bus_qspi_deinit(void *os_qspi_priv)
 
 	qspi_priv = os_qspi_priv;
 
-	k_free(qspi_priv);
+	k_heap_free(&nrf_wifi_drv_heap, qspi_priv);
 }
 
 #ifdef CONFIG_NRF_WIFI_LOW_POWER
@@ -660,7 +668,7 @@ static enum wifi_nrf_status zep_shim_bus_qspi_intr_reg(void *os_dev_ctx, void *c
 	struct zep_shim_intr_priv *intr_priv = NULL;
 	int ret = -1;
 
-	intr_priv = k_calloc(sizeof(*intr_priv), sizeof(char));
+	intr_priv = k_heap_alloc(&nrf_wifi_drv_heap, sizeof(*intr_priv), K_FOREVER);
 
 	if (!intr_priv) {
 		LOG_ERR("%s: Unable to allocate memory for intr_priv\n", __func__);
@@ -676,7 +684,7 @@ static enum wifi_nrf_status zep_shim_bus_qspi_intr_reg(void *os_dev_ctx, void *c
 
 	if (ret) {
 		LOG_ERR("%s: request_irq failed\n", __func__);
-		k_free(intr_priv);
+		k_heap_free(&nrf_wifi_drv_heap, intr_priv);
 		intr_priv = NULL;
 		goto out;
 	}
@@ -696,7 +704,7 @@ static void *zep_shim_timer_alloc(void)
 {
 	struct timer_list *timer = NULL;
 
-	timer = k_malloc(sizeof(*timer));
+	timer = k_heap_alloc(&nrf_wifi_drv_heap, sizeof(*timer), K_FOREVER);
 
 	if (!timer)
 		LOG_ERR("%s: Unable to allocate memory for work\n", __func__);
@@ -714,7 +722,7 @@ static void zep_shim_timer_init(void *timer, void (*callback)(unsigned long), un
 
 static void zep_shim_timer_free(void *timer)
 {
-	k_free(timer);
+	k_heap_free(&nrf_wifi_drv_heap, timer);
 }
 
 static void zep_shim_timer_schedule(void *timer, unsigned long duration)
@@ -731,7 +739,8 @@ static void zep_shim_timer_kill(void *timer)
 static const struct wifi_nrf_osal_ops wifi_nrf_os_zep_ops = {
 	.mem_alloc = zep_shim_mem_alloc,
 	.mem_zalloc = zep_shim_mem_zalloc,
-	.mem_free = k_free,
+	//.mem_free = k_free,
+	.mem_free = zep_shim_mem_free,
 	.mem_cpy = zep_shim_mem_cpy,
 	.mem_set = zep_shim_mem_set,
 
