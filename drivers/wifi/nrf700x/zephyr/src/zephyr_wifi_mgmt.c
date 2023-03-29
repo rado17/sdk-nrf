@@ -174,6 +174,8 @@ void wifi_nrf_event_proc_disp_scan_res_zep(void *vif_ctx,
 			res.rssi = (r->signal.signal.unspec_signal);
 		}
 
+		res.twt_support = r->twt_support;
+
 		vif_ctx_zep->disp_scan_cb(vif_ctx_zep->zep_net_if_ctx,
 					  0,
 					  &res);
