@@ -49,6 +49,8 @@ K_SEM_DEFINE(z_wpas_ready_sem, 0, 1);
 static struct net_mgmt_event_callback cb;
 struct k_mutex iface_up_mutex;
 
+static bool wpa_s_initialized = false;
+
 struct wpa_global *global;
 
 static int z_wpas_event_sockpair[2];
@@ -151,6 +153,7 @@ static int z_wpas_get_iface_count(void)
 static int z_wpas_add_interface(const char *ifname)
 {
 	struct wpa_supplicant *wpa_s;
+	union wpa_event_data *event = os_zalloc(sizeof(*event));
 	struct net_if *iface;
 	int ret = -1;
 	int retry = 0, count = Z_WPA_S_IFACE_NOTIFY_TIMEOUT_MS / Z_WPA_S_IFACE_NOTIFY_RETRY_MS;
@@ -163,51 +166,67 @@ static int z_wpas_add_interface(const char *ifname)
 		goto err;
 	}
 
-	ret = z_wpa_cli_global_cmd_v("interface_add %s %s %s %s",
-				ifname, "zephyr", "zephyr", "zephyr");
-	if (ret) {
-		wpa_printf(MSG_ERROR, "Failed to add interface: %s", ifname);
-		goto err;
+	if (!wpa_s_initialized) {
+		ret = z_wpa_cli_global_cmd_v("interface_add %s %s %s %s", ifname, "zephyr",
+					     "zephyr", "zephyr");
+		if (ret) {
+			wpa_printf(MSG_ERROR, "Failed to add interface: %s", ifname);
+			goto err;
+		}
+
+		/* This cannot be through control interface as need the handle */
+		while (retry++ < count && !wpa_supplicant_get_iface(global, ifname)) {
+			k_sleep(K_MSEC(Z_WPA_S_IFACE_NOTIFY_RETRY_MS));
+		}
+
+		wpa_s = wpa_supplicant_get_iface(global, ifname);
+		if (wpa_s == NULL) {
+			wpa_printf(MSG_ERROR, "Failed to add iface: %s", ifname);
+			goto err;
+		}
+
+		wpa_s->conf->filter_ssids = 1;
+		wpa_s->conf->ap_scan = 1;
+
+		/* Default interface, kick start wpa_supplicant */
+		if (z_wpas_get_iface_count() == 1) {
+			k_mutex_unlock(&iface_up_mutex);
+		}
+
+		ret = z_wpa_ctrl_init(wpa_s);
+		if (ret) {
+			wpa_printf(MSG_ERROR, "Failed to initialize control interface");
+			goto err;
+		}
+
+		ret = wifi_nm_register_mgd_iface(wifi_nm_get_instance("wpa_supplicant"), iface);
+
+		if (ret) {
+			wpa_printf(MSG_ERROR,
+				   "Failed to register mgd iface with native stack: %s (%d)",
+				   ifname, ret);
+			goto err;
+		}
+
+		generate_supp_state_event(ifname, NET_EVENT_WPA_SUPP_CMD_IFACE_ADDED, 0);
+		wpa_s_initialized = true;
 	}
-
-	/* This cannot be through control interface as need the handle */
-	while (retry++ < count && !wpa_supplicant_get_iface(global, ifname)) {
-		k_sleep(K_MSEC(Z_WPA_S_IFACE_NOTIFY_RETRY_MS));
-	}
-
-	wpa_s = wpa_supplicant_get_iface(global, ifname);
-	if (wpa_s == NULL) {
-		wpa_printf(MSG_ERROR, "Failed to add iface: %s", ifname);
-		goto err;
-	}
-
-	wpa_s->conf->filter_ssids = 1;
-	wpa_s->conf->ap_scan = 1;
-
-	/* Default interface, kick start wpa_supplicant */
-	if (z_wpas_get_iface_count() == 1) {
-		k_mutex_unlock(&iface_up_mutex);
-	}
-
-	ret = z_wpa_ctrl_init(wpa_s);
-	if (ret) {
-		wpa_printf(MSG_ERROR, "Failed to initialize control interface");
-		goto err;
-	}
-
-	ret = wifi_nm_register_mgd_iface(wifi_nm_get_instance("wpa_supplicant"), iface);
-
-	if (ret) {
-		wpa_printf(MSG_ERROR, "Failed to register mgd iface with native stack: %s (%d)",
-			ifname, ret);
-		goto err;
-	}
-
-	generate_supp_state_event(ifname, NET_EVENT_WPA_SUPP_CMD_IFACE_ADDED, 0);
 
 	if (z_wpas_get_iface_count() == 1) {
 		generate_supp_state_event(ifname, NET_EVENT_WPA_SUPP_CMD_READY, 0);
 	}
+
+	os_memcpy(event->interface_status.ifname, ifname, IFNAMSIZ);
+	event->interface_status.ievent = EVENT_INTERFACE_ADDED;
+
+	struct wpa_supplicant_event_msg msg = {
+		.global = true,
+		.ctx = global,
+		.event = EVENT_INTERFACE_STATUS,
+		.data = event,
+	};
+
+	z_wpas_send_event(&msg);
 
 	return 0;
 err:
@@ -264,24 +283,6 @@ static int z_wpas_remove_interface(const char *ifname)
 		-1);
 		goto err;
 	}
-
-	z_wpa_ctrl_deinit(wpa_s);
-
-	ret = z_wpa_cli_global_cmd_v("interface_remove %s", ifname);
-	if (ret) {
-		wpa_printf(MSG_ERROR, "Failed to remove interface: %s", ifname);
-		generate_supp_state_event(ifname, NET_EVENT_WPA_SUPP_CMD_IFACE_REMOVED,
-		-EINVAL);
-		goto err;
-	}
-
-	ret = wifi_nm_unregister_mgd_iface(wifi_nm_get_instance("wpa_supplicant"), iface);
-	if (ret) {
-		wpa_printf(MSG_ERROR, "Failed to unregister mgd iface with native stack: %s (%d)",
-			ifname, ret);
-		goto err;
-	}
-
 
 	if (z_wpas_get_iface_count() == 0) {
 		generate_supp_state_event(ifname, NET_EVENT_WPA_SUPP_CMD_NOT_READY, 0);
