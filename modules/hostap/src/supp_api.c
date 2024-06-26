@@ -20,6 +20,7 @@
 #include "supp_api.h"
 #include "wpa_cli_zephyr.h"
 #include "supp_events.h"
+#include "certs_store.h"
 
 extern struct k_sem wpa_supplicant_ready_sem;
 extern struct wpa_global *global;
@@ -365,7 +366,24 @@ static int wpas_add_and_config_network(struct wpa_supplicant *wpa_s,
 				_wpa_cli_cmd_v("set_network %d proto WPA",
 					resp.network_id);
 			}
-		} else if (params->security == WIFI_SECURITY_TYPE_WPA_AUTO_PERSONAL) {
+		} else if (params->security == WIFI_SECURITY_TYPE_EAP) {
+			_wpa_cli_cmd_v("set_network %d key_mgmt WPA-EAP",
+				resp.network_id);
+			_wpa_cli_cmd_v("set_network %d eap TLS",
+				resp.network_id);
+			_wpa_cli_cmd_v("set_network %d ca_cert \"blob://ca_cert\"",
+				resp.network_id);
+			_wpa_cli_cmd_v("set blob ca_cert %s",
+				ca_cert_blob);
+			_wpa_cli_cmd_v("set_network %d client_cert \"blob://client_cert\"",
+				resp.network_id);
+			_wpa_cli_cmd_v("set blob client_cert %s",
+				client_cert_blob);
+			_wpa_cli_cmd_v("set_network %d private_key \"blob://private_key\"",
+				resp.network_id);
+			_wpa_cli_cmd_v("set blob private_key %s",
+				private_key_blob);
+		}else if (params->security == WIFI_SECURITY_TYPE_WPA_AUTO_PERSONAL) {
 			if (params->sae_password) {
 				_wpa_cli_cmd_v("set_network %d sae_password \"%s\"",
 						resp.network_id, params->sae_password);
