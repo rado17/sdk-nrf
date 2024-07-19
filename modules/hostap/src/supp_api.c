@@ -371,6 +371,8 @@ static int wpas_add_and_config_network(struct wpa_supplicant *wpa_s,
 				resp.network_id);
 			_wpa_cli_cmd_v("set_network %d eap TLS",
 				resp.network_id);
+			_wpa_cli_cmd_v("set_network %d identity \"Foobar\"",
+				resp.network_id);
 			_wpa_cli_cmd_v("set_network %d ca_cert \"blob://ca_cert\"",
 				resp.network_id);
 			_wpa_cli_cmd_v("set blob ca_cert %s",

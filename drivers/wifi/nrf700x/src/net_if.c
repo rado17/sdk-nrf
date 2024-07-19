@@ -36,6 +36,8 @@ static struct net_mgmt_event_callback ip_maddr4_cb;
 static struct net_mgmt_event_callback ip_maddr6_cb;
 #endif /* CONFIG_NRF700X_STA_MODE */
 
+static bool is_eapol(struct net_pkt *pkt);
+
 void nrf_wifi_set_iface_event_handler(void *os_vif_ctx,
 						struct nrf_wifi_umac_event_set_interface *event,
 						unsigned int event_len)
@@ -210,6 +212,22 @@ void nrf_wifi_if_rx_frm(void *os_vif_ctx, void *frm)
 		return;
 	}
 
+	if (is_eapol(pkt)) {
+		uint8_t src_addr[6] = {0};
+		memcpy (src_addr, &((uint8_t *)pkt->frags->data)[6], 6);
+		printf("Received EAPoL from  %s\n", net_sprint_ll_addr(src_addr, 6));
+		for (int i = 0; i < pkt->frags->len; i++) {
+			printf("%02x ", ((uint8_t *)pkt->frags->data)[i]);
+		}
+		unsigned char *buf = &((uint8_t *)pkt->frags->data)[14];
+		printf("\n");
+		if (vif_ctx_zep->supp_drv_if_ctx &&
+			vif_ctx_zep->supp_callbk_fns.eapol_rx) {
+			vif_ctx_zep->supp_callbk_fns.eapol_rx(vif_ctx_zep->supp_drv_if_ctx, src_addr,
+				buf, pkt->frags->len - 12);
+		}
+		
+	}
 	status = net_recv_data(iface, pkt);
 
 	if (status < 0) {
