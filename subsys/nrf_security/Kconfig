@@ -188,7 +188,7 @@ config MBEDTLS_TLS_VERSION_1_2
 	bool "Enable support for TLS 1.2 (DTLS 1.2)"
 	select PSA_WANT_ALG_SHA_1
 	select PSA_WANT_ALG_SHA_224
-	select PSA_WANT_ALG_SHA_256
+	#select PSA_WANT_ALG_SHA_256
 	select PSA_WANT_ALG_SHA_384
 	select PSA_WANT_ALG_SHA_512
 	select MBEDTLS_CIPHER
@@ -254,7 +254,7 @@ config MBEDTLS_MAC_ALL_ENABLED
 	select PSA_WANT_ALG_HMAC
 	select PSA_WANT_ALG_SHA_1
 	select PSA_WANT_ALG_SHA_224
-	select PSA_WANT_ALG_SHA_256
+	#select PSA_WANT_ALG_SHA_256
 	select PSA_WANT_ALG_SHA_384
 	select PSA_WANT_ALG_SHA_512
 
@@ -262,7 +262,7 @@ config MBEDTLS_MAC_SHA256_ENABLED
 	bool "Enable the SHA-224 and SHA-256 hash algorithms"
 	default y
 	select PSA_WANT_ALG_SHA_224
-	select PSA_WANT_ALG_SHA_256
+	#select PSA_WANT_ALG_SHA_256
 	select PSA_WANT_ALG_HMAC
 
 config MBEDTLS_MAC_MD5_ENABLED
