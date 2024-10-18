@@ -121,7 +121,11 @@ nRF70 Series
 Libraries
 =========
 
-This section describes the changes related to libraries.
+Wi-Fi®
+------
+
+  * For :ref:`lib_wifi_credentials` library:
+    Syntax for `add` command has been modified to support getopt model.
 
 LTE link control library
 ------------------------
