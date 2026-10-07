@@ -65,6 +65,12 @@ enum nrf_wifi_status umac_cmd_sys_init(struct nrf_wifi_fmac_dev_ctx *fmac_dev_ct
 	umac_cmd_data->sys_params.sleep_enable = sleep_type;
 #endif /* CONFIG_NRF_WIFI_LOW_POWER */
 
+#ifdef CONFIG_NRF71_TCP_IP_CHECKSUM_OFFLOAD
+	umac_cmd_data->tcp_ip_checksum_offload = 1;
+#else
+	umac_cmd_data->tcp_ip_checksum_offload = 0;
+#endif /* CONFIG_NRF71_TCP_IP_CHECKSUM_OFFLOAD */
+
 	umac_cmd_data->discon_timeout = CONFIG_NRF_WIFI_AP_DEAD_DETECT_TIMEOUT;
 #ifdef CONFIG_NRF_WIFI_RPU_RECOVERY
 	umac_cmd_data->watchdog_timer_val =
@@ -478,11 +484,16 @@ enum nrf_wifi_status umac_cmd_sys_lmac_tuning_params(
 	/* Enable TX/RX checksum offloading in the LMAC. Per-packet behavior is
 	 * still controlled by the UMAC based on Kconfig; this parameter enables
 	 * local LMAC offloading support. Setting either field to 0 disables
-	 * offloading even when enabled in Kconfig. Enabled by default and not
-	 * expected to require modification under normal use.
+	 * offloading even when enabled in Kconfig. Per-packet csum_bitmap is
+	 * cleared for TKIP in the host TX path.
 	 */
+#ifdef CONFIG_NRF71_TCP_IP_CHECKSUM_OFFLOAD
 	umac_cmd_data->params.offloadTXChecksum = 1;
 	umac_cmd_data->params.offloadRXChecksum = 1;
+#else
+	umac_cmd_data->params.offloadTXChecksum = 0;
+	umac_cmd_data->params.offloadRXChecksum = 0;
+#endif /* CONFIG_NRF71_TCP_IP_CHECKSUM_OFFLOAD */
 
 	/* Parameter controlling system sleep behavior while transmitting a raw frame.
 	 * After transmitting a raw frame, the system remains active for the
