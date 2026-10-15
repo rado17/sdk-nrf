@@ -3723,6 +3723,11 @@ out:
 #endif /* NRF71_DEBUG_SHELL */
 
 #ifdef NRF71_UTIL
+static void lmac_quiet_period_gram_store(unsigned int quiet_period_sec)
+{
+	*(volatile uint32_t *)(uintptr_t)RPU_MEM_QUITE_PERIOD = quiet_period_sec;
+}
+
 enum nrf_wifi_status nrf_wifi_fmac_req_extended_sleep(void *dev_ctx,
 						      unsigned char if_idx,
 						      unsigned int duration_sec)
@@ -3744,6 +3749,8 @@ enum nrf_wifi_status nrf_wifi_fmac_req_extended_sleep(void *dev_ctx,
 				      __func__);
 		goto out;
 	}
+
+	lmac_quiet_period_gram_store(duration_sec);
 
 	set_quiet_period_cmd = nrf_wifi_mem_zalloc(NRF_WIFI_MEM_POOL_TYPE_CTRL,
 						   sizeof(*set_quiet_period_cmd));

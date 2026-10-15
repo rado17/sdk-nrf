@@ -1691,7 +1691,8 @@ struct INT_HPQ {
 	unsigned int tail;
 } __NRF_WIFI_PKD;
 
-
+/** LMAC GRAM quiet-period word (overlaps lmac_fw_config_params::numTX at boot). */
+#define RPU_MEM_QUITE_PERIOD 0xB7000D80UL
 
 /**
  * @brief lmac firmware config params
